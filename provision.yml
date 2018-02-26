@@ -36,7 +36,7 @@
   gather_facts: no
   pre_tasks:
     - name: Wait for port 22 to become available
-      local_action: "wait_for port=22 host={{ inventory_hostname }}"  
+      local_action: "wait_for port=22 host={{ inventory_hostname }} delay=30"
 
     - name: Install python 2 for Ansible
       raw: bash -c "test -e /usr/bin/python || (apt -qqy update && apt install -qqy python-minimal)"
@@ -156,19 +156,20 @@
         port: 8388
         state: enabled
 
+    # - name: start shadowsocks and add to boot
+    #   become: yes
+    #   systemd:
+    #     state: started
+    #     enabled: yes
+    #     name: shadowsocks-libev.service
+
     - name: start shadowsocks and add to boot
       become: yes
-      systemd:
-        state: restarted
-        enabled: yes
-        name: shadowsocks-libev
-
-    - name: Add shadowsocks to boot
-      become: yes
-      systemd:
+      service:
         state: started
         enabled: yes
         name: shadowsocks-libev
+        use: service
 
     - name: read config file
       shell: cat /etc/shadowsocks-libev/config.json
@@ -180,11 +181,15 @@
         
     - name: Reboot server
       become: yes
-      shell: /sbin/shutdown -r +1
+      shell: /sbin/shutdown -r +1 "Reboot to upgrade kernel"
       async: 1
       poll: 0
       ignore_errors: yes
 
+    # - name: Wait for port 22 to become available
+    #   local_action: "wait_for port=22 host={{ inventory_hostname }} delay=30"  
+
     # - name: Remove old kernel
-      # apt:
-        # autoremove: yes      
+    #   become: yes
+    #   apt:
+    #     autoremove: yes
