@@ -80,20 +80,25 @@
         regexp: '^%ss'
         line: '%ss ALL=(ALL) NOPASSWD: ALL'
         validate: 'visudo -cf %s'
-        
-    # - name: enable TCP BBR congestion control
-    #   sysctl:
-    #     name: net.core.default_qdisc
-    #     value: fq
-    #     state: present
-    #     reload: no
 
-    # - name: enable TCP BBR congestion control
-    #   sysctl:
-    #     name: net.ipv4.tcp_congestion_control
-    #     value: bbr
-    #     state: present
-    #     reload: yes
+    - name: Install newer kernel
+      apt:
+        name: linux-generic-hwe-16.04
+        install_recommends: yes
+
+    - name: Enable TCP BBR congestion control
+      sysctl:
+        name: net.core.default_qdisc
+        value: fq
+        state: present
+        reload: no
+
+    - name: Enable TCP BBR congestion control
+      sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: bbr
+        state: present
+        reload: yes
     
     - name: Disable Root login
       lineinfile:
@@ -151,10 +156,18 @@
         port: 8388
         state: enabled
 
-    - name: start shadowsocks
+    - name: start shadowsocks and add to boot
       become: yes
       systemd:
         state: restarted
+        enabled: yes
+        name: shadowsocks-libev
+
+    - name: Add shadowsocks to boot
+      become: yes
+      systemd:
+        state: started
+        enabled: yes
         name: shadowsocks-libev
 
     - name: read config file
@@ -165,3 +178,13 @@
       debug:
         var: conf.stdout
         
+    - name: Reboot server
+      become: yes
+      shell: /sbin/shutdown -r +1
+      async: 1
+      poll: 0
+      ignore_errors: yes
+
+    # - name: Remove old kernel
+      # apt:
+        # autoremove: yes      
