@@ -1,4 +1,4 @@
-# Prerequsiite
+# Prerequsites
 ## Have local generated ssh key
 ## Acquire DigitalOcean API TOKEN
 Login to digitalocean click API on top, generate API. Save TOKEN to environment.
