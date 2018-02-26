@@ -1,0 +1,156 @@
+---
+- hosts: localhost
+  connection: local
+  gather_facts: no
+
+  tasks:
+    - name: Get ssh key id
+      digital_ocean:
+        state: present
+        command: ssh
+        name: mbp
+      register: info
+
+    - name: Create new Droplet
+      digital_ocean:
+        state: present
+        command: droplet
+        name: ss
+        size_id: s-1vcpu-1gb
+        image_id: ubuntu-17-10-x64
+        region_id: nyc3
+        ipv6: yes
+        ssh_key_ids: '{{ info.ssh_key.id }}'
+        unique_name: yes
+      register: do
+
+    - name: Add new host to inventory
+      add_host:
+        name: '{{ do.droplet.ip_address }}'
+        groups: ss
+      when: do.droplet is defined
+
+- hosts: ss
+  remote_user: root
+  gather_facts: no
+  pre_tasks:
+    - name: Wait for port 22 to become available
+      local_action: "wait_for port=22 host={{ inventory_hostname }}"  
+
+    - name: Install python 2 for Ansible
+      raw: bash -c "test -e /usr/bin/python || (apt -qqy update && apt install -qqy python-minimal)"
+      register: output
+      changed_when: output.stdout != ""
+    
+    - name: Gather facts
+      setup:
+  
+  tasks:
+    - name: Install the DO Agent
+      shell: curl -sSL https://agent.digitalocean.com/install.sh | sh
+
+    - name: Install zsh
+      apt: 
+        name: '{{ item }}' 
+        state: latest
+        update_cache: yes
+        cache_valid_time: 3600
+      with_items:
+        - zsh
+        - git
+
+    - name: Create new user
+      user:
+        name: '{{ user_name }}'
+        groups: sudo
+        append: yes
+        shell: /bin/zsh
+        password: '{{ hashed_pass }}'
+    
+    - name: Set authorized key took from file
+      authorized_key:
+        user: '{{ user_name }}'
+        state: present
+        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+    - name: enable TCP BBR congestion control
+      sysctl:
+        name: net.core.default_qdisc
+        value: fq
+        state: present
+        reload: no
+
+    - name: enable TCP BBR congestion control
+      sysctl:
+        name: net.ipv4.tcp_congestion_control
+        value: bbr
+        state: present
+        reload: yes
+    
+    - name: Disable Root login
+      lineinfile:
+        path: /etc/ssh/sshd_config
+        regexp: '^PermitRootLogin yes'
+        line: "PermitRootLogin no"
+
+    - name: Restart sshd
+      systemd:
+        state: reloaded
+        name: sshd
+
+- hosts: ss
+  remote_user: '{{ user_name }}'
+  gather_facts: no
+
+  tasks:
+    - name: Install oh-my-zsh
+      shell: sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
+
+    - name: Update all packages to the latest version
+      become: yes    
+      apt:
+        upgrade: dist
+
+    - name: Install shadowsocks-libev & haveged
+      become: yes        
+      apt:
+        name: '{{ item }}'
+        state: latest
+      with_items:
+        - shadowsocks-libev
+        - haveged
+
+    - name: shadowsocks config
+      become: yes
+      lineinfile:
+        path: /etc/shadowsocks-libev/config.json
+        regexp: '.*127\.0\.0\.1.*'
+        line: '    "server":["[::0]","0.0.0.0"],'
+
+    - name: start shadowsocks
+      become: yes
+      systemd:
+        state: started
+        name: shadowsocks-libev
+
+    - name: set firewall
+      become: yes
+      ufw:
+        rule: allow
+        name: OpenSSH
+
+    - name: set firewall allow shadowsocks
+      become: yes
+      ufw:
+        rule: allow
+        port: 8388
+        state: enabled
+
+    - name: read config file
+      shell: cat /etc/shadowsocks-libev/config.json
+      register: conf
+
+    - name: print config file
+      debug:
+        var: conf.stdout
+        
