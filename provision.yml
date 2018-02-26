@@ -8,7 +8,7 @@
       digital_ocean:
         state: present
         command: ssh
-        name: mbp
+        name: '{{ ssh_key_name }}'
       register: info
 
     - name: Create new Droplet

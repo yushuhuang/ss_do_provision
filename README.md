@@ -27,5 +27,5 @@ python -c "from passlib.hash import sha512_crypt; import getpass; print sha512_c
 
 # Run provision.yml
 ```shell
-ansible-playbook provision.yml -e "user_name=your_user_name hashed_pass=your_hashed_pass ansible_sudo_pass=your_vm_passwd"
+ansible-playbook provision.yml -e "ssh_key_name=your_ssh_name user_name=your_user_name hashed_pass=your_hashed_pass ansible_sudo_pass=your_vm_passwd"
 ```
