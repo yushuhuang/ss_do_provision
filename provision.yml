@@ -18,7 +18,7 @@
         command: droplet
         name: ssserver
         size_id: s-1vcpu-1gb
-        image_id: ubuntu-17-10-x64
+        image_id: ubuntu-16-04-x64
         region_id: nyc3
         ipv6: yes
         ssh_key_ids: '{{ info.ssh_key.id }}'
@@ -66,7 +66,6 @@
         groups: sudo
         append: yes
         shell: /bin/zsh
-        password: "{{ pass | password_hash('sha512') }}"
     
     - name: Set authorized key took from file
       authorized_key:
@@ -74,19 +73,27 @@
         state: present
         key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 
-    - name: enable TCP BBR congestion control
-      sysctl:
-        name: net.core.default_qdisc
-        value: fq
+    - name: Allow 'ss' user to have passwordless sudo
+      lineinfile:
+        dest: /etc/sudoers
         state: present
-        reload: no
+        regexp: '^%ss'
+        line: '%ss ALL=(ALL) NOPASSWD: ALL'
+        validate: 'visudo -cf %s'
+        
+    # - name: enable TCP BBR congestion control
+    #   sysctl:
+    #     name: net.core.default_qdisc
+    #     value: fq
+    #     state: present
+    #     reload: no
 
-    - name: enable TCP BBR congestion control
-      sysctl:
-        name: net.ipv4.tcp_congestion_control
-        value: bbr
-        state: present
-        reload: yes
+    # - name: enable TCP BBR congestion control
+    #   sysctl:
+    #     name: net.ipv4.tcp_congestion_control
+    #     value: bbr
+    #     state: present
+    #     reload: yes
     
     - name: Disable Root login
       lineinfile:
@@ -112,20 +119,23 @@
       apt:
         upgrade: dist
 
-    - name: Install shadowsocks-libev & haveged
+    - name: Add shadowsocks apt_repository
+      become: yes
+      apt_repository:
+        repo: 'ppa:max-c-lv/shadowsocks-libev'
+
+    - name: Install shadowsocks-libev
       become: yes        
       apt:
-        name: '{{ item }}'
+        name: shadowsocks-libev
         state: latest
-      with_items:
-        - shadowsocks-libev
-        - haveged
+        update_cache: yes
 
     - name: shadowsocks config
       become: yes
       lineinfile:
         path: /etc/shadowsocks-libev/config.json
-        regexp: '.*127\.0\.0\.1.*'
+        regexp: '.*\"server\".*'
         line: '    "server":["[::0]","0.0.0.0"],'
 
     - name: set firewall

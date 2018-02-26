@@ -1,5 +1,5 @@
 # Prerequsites
-## Have local generated ssh key
+## Have local ssh key generated
 ## Acquire DigitalOcean API TOKEN
 Login to digitalocean click API on top, generate API. Save TOKEN to environment.
 
@@ -16,5 +16,5 @@ pip install ansible
 ```
 # Run provision.yml
 ```shell
-ansible-playbook provision.yml -e "pass=user_pass ansible_sudo_pass=user_pass"
+ansible-playbook provision.yml
 ```
