@@ -4,18 +4,19 @@
   gather_facts: no
 
   tasks:
-    - name: Get ssh key id
+    - name: Upload & Get ssh key id
       digital_ocean:
         state: present
         command: ssh
-        name: '{{ ssh_key_name }}'
+        ssh_pub_key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+        name: my_computer
       register: info
 
     - name: Create new Droplet
       digital_ocean:
         state: present
         command: droplet
-        name: ss
+        name: ssserver
         size_id: s-1vcpu-1gb
         image_id: ubuntu-17-10-x64
         region_id: nyc3
@@ -27,10 +28,10 @@
     - name: Add new host to inventory
       add_host:
         name: '{{ do.droplet.ip_address }}'
-        groups: ss
+        groups: ssserver
       when: do.droplet is defined
 
-- hosts: ss
+- hosts: ssserver
   remote_user: root
   gather_facts: no
   pre_tasks:
@@ -61,15 +62,15 @@
 
     - name: Create new user
       user:
-        name: '{{ user_name }}'
+        name: ss
         groups: sudo
         append: yes
         shell: /bin/zsh
-        password: '{{ hashed_pass }}'
+        password: "{{ pass | password_hash('sha512') }}"
     
     - name: Set authorized key took from file
       authorized_key:
-        user: '{{ user_name }}'
+        user: ss
         state: present
         key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
 
@@ -98,8 +99,8 @@
         state: reloaded
         name: sshd
 
-- hosts: ss
-  remote_user: '{{ user_name }}'
+- hosts: ssserver
+  remote_user: ss
   gather_facts: no
 
   tasks:
@@ -127,12 +128,6 @@
         regexp: '.*127\.0\.0\.1.*'
         line: '    "server":["[::0]","0.0.0.0"],'
 
-    - name: start shadowsocks
-      become: yes
-      systemd:
-        state: started
-        name: shadowsocks-libev
-
     - name: set firewall
       become: yes
       ufw:
@@ -145,6 +140,12 @@
         rule: allow
         port: 8388
         state: enabled
+
+    - name: start shadowsocks
+      become: yes
+      systemd:
+        state: restarted
+        name: shadowsocks-libev
 
     - name: read config file
       shell: cat /etc/shadowsocks-libev/config.json

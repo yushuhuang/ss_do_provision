@@ -1,4 +1,5 @@
 # Prerequsiite
+## Have local generated ssh key
 ## Acquire DigitalOcean API TOKEN
 Login to digitalocean click API on top, generate API. Save TOKEN to environment.
 
@@ -9,23 +10,11 @@ export DO_API_TOKEN="YOUR_API_TOKEN_HERE"
 or append above command in your `~/.bashrc`
 
 ## Install Ansible
-Have python2 and pip install on your host computer.
+Have python2 and pip installed on your computer.
 ```shell
 pip install ansible
 ```
-
-## Generate hased password for vm
-Linux
-```shell
-mkpassed --method=sha-512
-```
-mac
-```shell
-pip install passlib
-python -c "from passlib.hash import sha512_crypt; import getpass; print sha512_crypt.using(rounds=5000).hash(getpass.getpass())"
-```
-
 # Run provision.yml
 ```shell
-ansible-playbook provision.yml -e "ssh_key_name=your_ssh_name user_name=your_user_name hashed_pass=your_hashed_pass ansible_sudo_pass=your_vm_passwd"
+ansible-playbook provision.yml -e "pass=user_pass ansible_sudo_pass=user_pass"
 ```
