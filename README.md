@@ -14,6 +14,7 @@ or append above command in your `~/.bashrc`
 Have *python2* and pip installed on your computer.
 ```shell
 pip install ansible
+pip install dopy
 ```
 note: it has to be python2
 # Run provision.yml
