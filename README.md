@@ -4,13 +4,13 @@
 
 ### 1. Have local ssh key generated
 
-[Reference: Generate ssh key](https://docs.typo3.org/typo3cms/ContributionWorkflowGuide/Appendix/OSX/SSHKeyOSX.html)
+```shell
+ssh-keygen
+```
 
 ### 2. Acquire DigitalOcean API TOKEN
 
 Login to digitalocean click API on top, generate API. Save TOKEN to environment.
-
-In terminal type:
 
 ```shell
 export DO_API_TOKEN="YOUR_API_TOKEN_HERE"
@@ -23,7 +23,7 @@ or append above command in your `~/.bashrc`
 Have *python2* and pip installed on your computer.
 
 ```shell
-pip install ansible
+pip install ansible dopy
 ```
 
 note: it has to be python2
