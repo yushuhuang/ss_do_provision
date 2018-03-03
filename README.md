@@ -1,10 +1,12 @@
 # Prerequsites
 ### 1. Have local ssh key generated
-[Generate ssh key](https://docs.typo3.org/typo3cms/ContributionWorkflowGuide/Appendix/OSX/SSHKeyOSX.html)
+
+```shell
+ssh-keygen
+```
 ### 2. Acquire DigitalOcean API TOKEN
 Login to digitalocean click API on top, generate API. Save TOKEN to environment.
 
-In terminal type:
 ```shell
 export DO_API_TOKEN="YOUR_API_TOKEN_HERE"
 ```
