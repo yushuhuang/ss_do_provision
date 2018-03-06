@@ -1,0 +1,55 @@
+---    
+  - name: Install the DO Agent
+    shell: curl -sSL https://agent.digitalocean.com/install.sh | sh
+
+  - name: Install zsh
+    apt: 
+      name: '{{ item }}' 
+      state: latest
+      update_cache: yes
+      cache_valid_time: 3600
+    with_items:
+      - zsh
+      - git
+
+  - name: Create new user
+    user:
+      name: ss
+      groups: sudo
+      append: yes
+      shell: /bin/zsh
+    
+  - name: Set authorized key took from file
+    authorized_key:
+      user: ss
+      state: present
+      key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
+
+  - name: Allow 'ss' user to have passwordless sudo
+    lineinfile:
+      dest: /etc/sudoers
+      state: present
+      regexp: '^%ss'
+      line: '%ss ALL=(ALL) NOPASSWD: ALL'
+      validate: 'visudo -cf %s'
+
+  - name: Disable Root login
+    lineinfile:
+      path: /etc/ssh/sshd_config
+      regexp: '^PermitRootLogin yes'
+      line: "PermitRootLogin no"
+
+  - name: Restart sshd
+    systemd:
+      state: reloaded
+      name: sshd
+
+  - name: set firewall
+    ufw:
+      rule: allow
+      name: OpenSSH
+
+  - name: Update all packages to the latest version
+    apt:
+      upgrade: dist
+  

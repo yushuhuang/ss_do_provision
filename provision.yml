@@ -16,7 +16,7 @@
       digital_ocean:
         state: present
         command: droplet
-        name: ssserver
+        name: ssservert
         size_id: s-1vcpu-1gb
         image_id: ubuntu-16-04-x64
         region_id: nyc3
@@ -47,69 +47,11 @@
       setup:
   
   tasks:
-    - name: Install the DO Agent
-      shell: curl -sSL https://agent.digitalocean.com/install.sh | sh
+    - name: Root setup
+      include_role:
+        name: root-setup
+      tag: root
 
-    - name: Install zsh
-      apt: 
-        name: '{{ item }}' 
-        state: latest
-        update_cache: yes
-        cache_valid_time: 3600
-      with_items:
-        - zsh
-        - git
-
-    - name: Create new user
-      user:
-        name: ss
-        groups: sudo
-        append: yes
-        shell: /bin/zsh
-    
-    - name: Set authorized key took from file
-      authorized_key:
-        user: ss
-        state: present
-        key: "{{ lookup('file', '~/.ssh/id_rsa.pub') }}"
-
-    - name: Allow 'ss' user to have passwordless sudo
-      lineinfile:
-        dest: /etc/sudoers
-        state: present
-        regexp: '^%ss'
-        line: '%ss ALL=(ALL) NOPASSWD: ALL'
-        validate: 'visudo -cf %s'
-
-    - name: Install newer kernel
-      apt:
-        name: linux-generic-hwe-16.04
-        install_recommends: yes
-
-    - name: Enable TCP BBR congestion control
-      sysctl:
-        name: net.core.default_qdisc
-        value: fq
-        state: present
-        reload: no
-
-    - name: Enable TCP BBR congestion control
-      sysctl:
-        name: net.ipv4.tcp_congestion_control
-        value: bbr
-        state: present
-        reload: yes
-    
-    - name: Disable Root login
-      lineinfile:
-        path: /etc/ssh/sshd_config
-        regexp: '^PermitRootLogin yes'
-        line: "PermitRootLogin no"
-
-    - name: Restart sshd
-      systemd:
-        state: reloaded
-        name: sshd
 
 - hosts: ssserver
   remote_user: ss
@@ -119,77 +61,6 @@
     - name: Install oh-my-zsh
       shell: sh -c "$(curl -fsSL https://raw.github.com/robbyrussell/oh-my-zsh/master/tools/install.sh)"
 
-    - name: Update all packages to the latest version
-      become: yes    
-      apt:
-        upgrade: dist
-
-    - name: Add shadowsocks apt_repository
-      become: yes
-      apt_repository:
-        repo: 'ppa:max-c-lv/shadowsocks-libev'
-
     - name: Install shadowsocks-libev
-      become: yes        
-      apt:
+      import_role:
         name: shadowsocks-libev
-        state: latest
-        update_cache: yes
-
-    - name: shadowsocks config
-      become: yes
-      lineinfile:
-        path: /etc/shadowsocks-libev/config.json
-        regexp: '.*\"server\".*'
-        line: '    "server":["[::0]","0.0.0.0"],'
-
-    - name: set firewall
-      become: yes
-      ufw:
-        rule: allow
-        name: OpenSSH
-
-    - name: set firewall allow shadowsocks
-      become: yes
-      ufw:
-        rule: allow
-        port: 8388
-        state: enabled
-
-    # - name: start shadowsocks and add to boot
-    #   become: yes
-    #   systemd:
-    #     state: started
-    #     enabled: yes
-    #     name: shadowsocks-libev.service
-
-    - name: start shadowsocks and add to boot
-      become: yes
-      service:
-        state: started
-        enabled: yes
-        name: shadowsocks-libev
-        use: service
-
-    - name: read config file
-      shell: cat /etc/shadowsocks-libev/config.json
-      register: conf
-
-    - name: print config file
-      debug:
-        var: conf.stdout
-        
-    - name: Reboot server
-      become: yes
-      shell: /sbin/shutdown -r +1 "Reboot to upgrade kernel"
-      async: 1
-      poll: 0
-      ignore_errors: yes
-
-    # - name: Wait for port 22 to become available
-    #   local_action: "wait_for port=22 host={{ inventory_hostname }} delay=30"  
-
-    # - name: Remove old kernel
-    #   become: yes
-    #   apt:
-    #     autoremove: yes

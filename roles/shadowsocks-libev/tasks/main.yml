@@ -1,0 +1,79 @@
+---
+  - name: Install newer kernel
+    become: yes
+    apt:
+      name: linux-generic-hwe-16.04
+      install_recommends: yes
+
+  - name: Enable TCP BBR congestion control
+    become: yes  
+    sysctl:
+      name: net.core.default_qdisc
+      value: fq
+      state: present
+      reload: no
+
+  - name: Enable TCP BBR congestion control
+    become: yes  
+    sysctl:
+      name: net.ipv4.tcp_congestion_control
+      value: bbr
+      state: present
+      reload: yes
+
+  - name: Add shadowsocks apt_repository
+    become: yes
+    apt_repository:
+      repo: 'ppa:max-c-lv/shadowsocks-libev'
+
+  - name: Install shadowsocks-libev
+    become: yes
+    apt:
+      name: shadowsocks-libev
+      state: latest
+      update_cache: yes
+
+  - name: shadowsocks config
+    become: yes
+    lineinfile:
+      path: /etc/shadowsocks-libev/config.json
+      regexp: '.*\"server\".*'
+      line: '    "server":["[::0]","0.0.0.0"],'
+
+  - name: set firewall allow shadowsocks
+    become: yes
+    ufw:
+      rule: allow
+      port: 8388
+      state: enabled
+
+  - name: start shadowsocks and add to boot
+    become: yes
+    service:
+      state: started
+      enabled: yes
+      name: shadowsocks-libev
+      use: service
+
+  - name: read config file
+    shell: cat /etc/shadowsocks-libev/config.json
+    register: conf
+
+  - name: print config file
+    debug:
+      var: conf.stdout      
+
+  - name: Reboot server
+    become: yes
+    shell: /sbin/shutdown -r +1 "Reboot to upgrade kernel"
+    async: 1
+    poll: 0
+    ignore_errors: yes
+
+  # - name: Wait for port 22 to become available
+  #   local_action: "wait_for port=22 host={{ inventory_hostname }} delay=30"  
+
+  # - name: Remove old kernel
+  #   become: yes
+  #   apt:
+  #     autoremove: yes
