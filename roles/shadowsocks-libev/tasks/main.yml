@@ -33,12 +33,52 @@
       state: latest
       update_cache: yes
 
+  - name: Install simple-obfs building Dependencies
+    become: yes
+    apt:
+      name: '{{ item }}'
+      state: latest
+      update_cache: yes
+      install_recommends: no
+    with_items:
+      - build-essential
+      - autoconf
+      - libtool
+      - libssl-dev
+      - libpcre3-dev
+      - libev-dev
+      - asciidoc
+      - xmlto
+      - automake
+    
+  - name: Clone simple-obfs
+    git:
+      repo: https://github.com/shadowsocks/simple-obfs.git
+      dest: /home/ss/simple-obfs
+
+  - name: Clone simple-obfs submodule
+    shell: cd /home/ss/simple-obfs && git submodule update --init --recursive
+  
+  - name: Compile simple-obfs
+    shell: cd /home/ss/simple-obfs && ./autogen.sh && ./configure && make
+
+  - name: Install simple-obfs
+    become: yes
+    shell: cd /home/ss/simple-obfs && make install
+
   - name: shadowsocks config
     become: yes
     lineinfile:
       path: /etc/shadowsocks-libev/config.json
       regexp: '.*\"server\".*'
       line: '    "server":["[::0]","0.0.0.0"],'
+
+  - name: shadowsocks config
+    become: yes
+    lineinfile:
+      path: /etc/shadowsocks-libev/config.json
+      regexp: '.*\"method\".*'
+      line: '    "method":"chacha20-ietf-poly1305", "plugin":"obfs-server", "plugin_opts":"obfs=http"'
 
   - name: set firewall allow shadowsocks
     become: yes
